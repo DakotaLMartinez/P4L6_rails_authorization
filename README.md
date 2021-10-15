@@ -259,3 +259,5 @@ This will allow us to include the comments when we retrieve a post from the api 
 
 </details>
 <br/>
+
+After we're done with this, we can test out the [react client](https://github.com/DakotaLMartinez/080921_meetup_clone_client) and see if it works!
