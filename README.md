@@ -1,872 +1,261 @@
-# Phase 4 - Lecture 3 Client/Server Communication part2
+# Phase 4 - Lecture 4: Rails Serializers
 
-## Today's Topics
+Today's focus: 
 
-- Adding Update/Delete functionality to our API to complete full CRUD
-- How to write add column migrations
-- Practicing how to break down feature requirements into the RESTful API endpoints they require
+- Customizing the JSON rendered by the API to support client side features.
 
-## Features for Meetup Clone
+## Key Features
 
-- Users can delete an event they created
-- Users can leave a group
-- Users who rsvp'd to an event can delete their RSVP
-- Users can update an event they created
-- Users can update whether a user attended an event
+### Meetup Clone
 
-## Features for Reading List Application
+- When we display the groups list, we can display a Join Group button to users who haven't joined a group and a Leave Group button to users who have joined the group.
+- When we visit the group show page, we can also display a list of the group's members and its events.
+- When we display the events list, we can display an RVSP for Event button to those who haven't already rsvp'd and a Cancel RSVP button to those who have.
+- When we visit the show (detail) page for an event, we also want to have access to the attendees, the creator of the event, and the group that the event belongs to (as a link)
 
-- Users can update whether or not they have read a book
-- Users can remove a book from their reading list
+## Necessary configuration for AMS (ActiveModel Serializers)
 
-Again, we'll be breaking down the functionality into pieces, starting with the request, going through route, controller, model and leading to a response. Today, I'll be asking for more input from you all about what the RESTful requests should be to support these features.
+```
+bundle add active_model_serializers
+```
+Make sure when you do this that you don't already have a running rails server!
 
-## Users can delete an event they created
+Once you've installed this gem, Rails will use a serializer matching the model name to convert an object to JSON by default.
 
-### Request
-
-<details>
-  <summary>
-    What request method do we need? GET/POST/PATCH or DELETE?
-  </summary>
-  <hr/>
-  DELETE
-  <hr/>
-</details>
-<br />
-
-<details>
-  <summary>
-    What will the path be?
-  </summary>
-  <hr/>
-
-  `/events/:id`
-
-  <hr/>
-
-</details>
-
-<br/>
-<details>
-  <summary>
-    Do we need the content-type header? 
-  </summary>
-  <hr/>
-
-  NO
-
-  <hr/>
-
-</details>
-
-
-<br/>
-<details>
-  <summary>
-    Do we need a body? If so what will it look like?
-  </summary>
-  <hr/>
-
-  N/A
-
-  <hr/>
-
-</details>
-<br/>
-
-### Route
-<br/>
-<details>
-  <summary>
-    What route do we need?
-  </summary>
-  <hr/>
-
-  ```rb
-  resources :events, only: [:destroy]
-  ```
-
-  <hr/>
-
-</details>
-<br/>
-
-### Controller
-<br/>
-<details>
-  <summary>
-    Which controller action(s) do we need?
-  </summary>
-  <hr/>
-
-  `events#destroy`
-
-  <hr/>
-
-</details>
-<br/>
-
-### Model/Database
-<br/>
-<details>
-  <summary>
-    Any changes needed to model layer (methods/validations/etc.)?
-  </summary>
-  <hr/>
-
-  Nope!
-
-  <hr/>
-
-</details>
-<br/>
-
-<details>
-  <summary>
-    Any changes needed to the database to support this request?
-  </summary>
-  <hr/>
-
-  Nope!
-
-  <hr/>
-
-</details>
-<br/>
-
-<details>
-  <summary>
-    What model objects are involved and how do we interact with them in the controller?
-  </summary>
-  <hr/>
-
-  - We need to find the event object we're going to delete using the find method with the id included in the request url parameters.
-  - We need to call destroy on that object.
-
-  <hr/>
-
-</details>
-<br/>
-
-### Response
-<br/>
-<details>
-  <summary>
-    What should the response be to our API request?
-  </summary>
-  <hr/>
-
-  ```rb
-  def destroy
-    event = Event.find(params[:id])
-    event.destroy
-  end
-  ```
-  no content (204 status code) We can get this by leaving off the render.
-  
-   We can also respond with 200 ok and the deleted record if we want to enable an undo feature from our frontend (we can send a POST request to insert the deleted record again)
-  ```rb
-  def destroy
-    event = Event.find(params[:id])
-    event.destroy
-    render json: event
-  end
-  ```
-  <hr/>
-
-</details>
-<br/>
-
-
-## Users who rsvp'd to an event can delete their RSVP
-
-### Request
-<details>
-  <summary>
-    What request method do we need? GET/POST/PATCH or DELETE?
-  </summary>
-  <hr/>
-  DELETE
-  <hr/>
-</details>
-<br />
-
-<details>
-  <summary>
-    What will the path be?
-  </summary>
-  <hr/>
-
-  `/user_events/:id `
-
-  <hr/>
-
-</details>
-
-<br/>
-<details>
-<summary>
-Do we need the content-type header?
-</summary>
-<hr/>
-
-NO
-
-<hr/>
-
-</details>
-
-
-<br/>
-<details>
-  <summary>
-    Do we need a body? If so what will it look like?
-  </summary>
-  <hr/>
-
-  N/A
-
-  <hr/>
-
-</details>
-<br/>
-
-### Route
-<details>
-  <summary>
-    What route do we need?
-  </summary>
-  <hr/>
-
-  `resources :user_events, only: [:destroy]`
-
-  <hr/>
-
-</details>
-<br/>
-
-### Controller
-<details>
-  <summary>
-    Which controller action(s) do we need?
-  </summary>
-  <hr/>
-
-  `user_events#destroy`
-
-  <hr/>
-
-</details>
-<br/>
-
-### Model/Database
-<details>
-  <summary>
-    Any changes needed to model layer (methods/validations/etc.)?
-  </summary>
-  <hr/>
-
-  Nope!
-
-  <hr/>
-
-</details>
-<br/>
-
-<details>
-  <summary>
-    Any changes needed to the database to support this request?
-  </summary>
-  <hr/>
-
-  Nope!
-
-  <hr/>
-
-</details>
-<br/>
-
-<details>
-  <summary>
-    What model objects are involved and how do we interact with them in the controller?
-  </summary>
-  <hr/>
-
-  - We need to find the `UserEvent` we're going to delete using the find method and the id included in the url parameters of the request. 
-  - Then we need to call destroy on that object.
-
-  <hr/>
-
-</details>
-<br/>
-
-
-
-### Response
-<details>
-  <summary>
-    What should the response be to our API request?
-  </summary>
-  <hr/>
-
-  ```rb
-    def destroy
-      user_event = UserEvent.find(params[:id])
-      user_event.destroy
-    end
-  ```
-
-  None needed. If we just leave out the render method, we'll send a 204 no content response by default. We can explicitly send the 204 no content response by adding
-
-  ```rb
-  head :no_content
-  ```
-
-  <hr/>
-
-</details>
-<br/>
-
-## Users can leave a group
-
-### Request
-
-<details>
-  <summary>
-    What request method do we need? GET/POST/PATCH or DELETE?
-  </summary>
-  <hr/>
-  DELETE
-  <hr/>
-</details>
-<br />
-
-<details>
-  <summary>
-    What will the path be?
-  </summary>
-  <hr/>
-
-  `/user_groups/:id`
-
-  <hr/>
-
-</details>
-
-<br/>
-<details>
-  <summary>
-    Do we need the content-type header? 
-  </summary>
-  <hr/>
-
-  NO
-
-  <hr/>
-
-</details>
-
-
-<br/>
-<details>
-  <summary>
-    Do we need a body? If so what will it look like?
-  </summary>
-  <hr/>
-
-  N/A
-
-  <hr/>
-
-</details>
-<br/>
-
-### Route
-<br/>
-<details>
-  <summary>
-    What route do we need?
-  </summary>
-  <hr/>
-
-  ```rb
-  resources :user_groups, only: [:destroy]
-  ```
-
-  <hr/>
-
-</details>
-<br/>
-
-### Controller
-<br/>
-<details>
-  <summary>
-    Which controller action(s) do we need?
-  </summary>
-  <hr/>
-
-  `user_groups#destroy`
-
-  <hr/>
-
-</details>
-<br/>
-
-### Model/Database
-<br/>
-<details>
-  <summary>
-    Any changes needed to model layer (methods/validations/etc.)?
-  </summary>
-  <hr/>
-
-  Nope!
-
-  <hr/>
-
-</details>
-<br/>
-<details>
-  <summary>
-    Any changes needed to the database to support this request?
-  </summary>
-  <hr/>
-
-  Nope!
-
-  <hr/>
-
-</details>
-<br/>
-
-<details>
-  <summary>
-    What model objects are involved and how do we interact with them in the controller?
-  </summary>
-  <hr/>
-
-  - We need to find the `UserGroup` we're going to delete using the find method with the id included in the request url parameters
-  - and then we need to call destroy on that object.
-
-  <hr/>
-
-</details>
-<br/>
-
-### Response
-<br/>
-<details>
-  <summary>
-    What should the response be to our API request?
-  </summary>
-  <hr/>
-
-  ```rb
-  user_group = UserGroup.find(params[:id])
-  user_group.destroy
-  ```
-
-  no content (204 status code) We can get this by leaving off the render.
-  
-  We can also respond with 200 ok and the deleted record if we want to enable an undo feature from our frontend (we can send a POST request to insert the deleted record again)
-
-  <hr/>
-
-</details>
-<br/>
-
-
-## Users can update an event they created
-
-### Request
-<details>
-  <summary>
-    What request method do we need? GET/POST/PATCH or DELETE?
-  </summary>
-  <hr/>
-
-  `PATCH`
-
-  <hr/>
-
-</details>
-<br/>
-
-
-<details>
-  <summary>
-    What will the path be?
-  </summary>
-  <hr/>
-
-  `/events/:id`
-
-  <hr/>
-
-</details>
-<br/>
-
-
-<details>
-  <summary>
-    Do we need the Content-Type header?
-  </summary>
-  <hr/>
-
-  YES because we have a JSON body
-
-  <hr/>
-
-</details>
-<br/>
-
-<details>
-  <summary>
-    Do we need a body? If so, what will it include?
-  </summary>
-  <hr/>
-
-  YES
-  - :title
-  - :description
-  - :location
-  - :start_time
-  - :end_time
-  - :group_id
-
-  To see what these things should be, we can take a look at the corresponding database table in our schema and think about which things a user should be able to edit directly. We can also check the strong parameters in the corresponding controller.
-
-  <hr/>
-
-</details>
-<br/>
-
-### Route
-<details>
-  <summary>
-    What route do we need?
-  </summary>
-  <hr/>
-
-  `patch "/events/:id" => events#update`
-
-  -- or --
-
-  `resources :events, only: [:update]`
-
-  <hr/>
-
-</details>
-<br/>
-
-### Controller
-<details>
-  <summary>
-    Which controller action(s) do we need?
-  </summary>
-  <hr/>
-
-  `events#update`
-
-  <hr/>
-
-</details>
-<br/>
-
-### Model/Database
-
-<details>
-  <summary>
-    Any changes needed to model layer (methods/validations/etc.)?
-  </summary>
-  <hr/>
-
-  None
-
-  <hr/>
-
-</details>
-<br/>
-
-<details>
-  <summary>
-    Any changes needed to the database to support this request?
-  </summary>
-  <hr/>
-
-  Nope!
-
-  <hr/>
-
-</details>
-<br/>
-
-<details>
-  <summary>
-    What model objects are involved and how do we interact with them in the controller?
-  </summary>
-  <hr/>
-
-  - We need to find the event whose id appears in the url parameters of the request
-  - We need to try to update that event with the `event_params`
-
-  <hr/>
-
-</details>
-<br/>
-
-
-
-### Response
-<details>
-  <summary>
-    What should the response be to our API request?
-  </summary>
-  <hr/>
-
-  - if update succeeds, the json version of the updated event and a 200 status code
-  - if not, error messages with 422 status code upon failed validation
-
-   ```rb
-  def update
-      event = Event.find(params[:id])
-      if event.update(event_params)
-        render json: event, status: :ok
-      else
-        render json: event.errors, status: :unprocessable_entity
-      end
-    end
-  ```
-
-  <hr/>
-
-</details>
-<br/>
-
-
-
-
-## Users can update whether a user attended an event
-
-### Request
-<details>
-  <summary>
-    What request method do we need?
-  </summary>
-  <hr/>
-
-  `PATCH`
-
-  <hr/>
-
-</details>
-<br/>
-
-
-<details>
-  <summary>
-    What will the path be?
-  </summary>
-  <hr/>
-
-  `/user_events/:id`
-
-  <hr/>
-
-</details>
-<br/>
-
-<details>
-  <summary>
-    Do we need the Content-Type header?
-  </summary>
-  <hr/>
-
-  YES
-
-  <hr/>
-
-</details>
-<br/>
-
-
-<details>
-  <summary>
-    Do we need a body? If so, what will it include?
-  </summary>
-  <hr/>
-
-- YES
-    - event_id
-    - attended (boolean)
-
-This could be debatable to an extent.  If we're updating an RSVP, would it make sense to change the event the rsvp belongs to or simply to focus on whether they attended or not? If we decided we only want to allow updating of the attended attribute, what change would we need to make?
-  <hr/>
-
-</details>
-<br/>
-
-### Route
-<details>
-  <summary>
-    What route do we need?
-  </summary>
-  <hr/>
-
-  `patch '/user_events/:id', to: 'user_events#update'`
-
-  -- or --
-
-  `resources :user_events, only: [:update]`
-
-  <hr/>
-
-</details>
-<br/>
-
-### Controller
-<details>
-  <summary>
-    Which controller action(s) do we need?
-  </summary>
-  <hr/>
-
-  `user_events#update`
-
-  <hr/>
-
-</details>
-<br/>
-
-<details>
-  <summary>
-    Can we use our strong parameters from create or is update different for some reason?
-  </summary>
-  <hr/>
-
-  In this case, we probably don't want to allow `event_id` through when doing an update, so we'll need a separate method for `update_user_event_params` here to only permit `attended` to be updated.
-
-  <hr/>
-
-</details>
-<br/>
-
-
-### Model/Database
-
-<details>
-  <summary>
-    Any changes needed to model layer (methods/validations/etc.)?
-  </summary>
-  <hr/>
-
-  Nope!
-
-  <hr/>
-
-</details>
-<br/>
-
-<details>
-  <summary>
-    Any changes needed to the database to support this request?
-  </summary>
-  <hr/>
-
-  YES! We don't currently have an attended column in the user_events table, so we'll need to add that.
-
-  <hr/>
-
-</details>
-<br/>
-
-
-
-<details>
-  <summary>
-    What model objects are involved and how do we interact with them in the controller?
-  </summary>
-  <hr/>
-
-  - We need to find the `UserEvent` object to update by using the find method with the id including in the url parameters of the request.
-  - We need to call update on that object and pass only the attended parameter (using strong_params)
-
-  ```rb
-  def update_user_event_params
-    params.permit(:attended)
-  end
-  ```
-
-  <hr/>
-
-</details>
-<br/>
-
-
-### Response
-<details>
-  <summary>
-    What should the response be to our API request?
-  </summary>
-  <hr/>
-
-  - if update succeeds, the json version of the updated user_event and a 200 status code
-  - if not, error messages with 422 status code upon failed validation
-
-  ```rb
-  def update
-    user_event = UserEvent.find(params[:id])
-    if user_event.update(update_user_event_params)
-      render json: user_event, status: :ok
-    else
-      render json: user_event.errors, status: :unprocessable_entity
-    end
-  end
-  ```
-
-  <hr/>
-
-</details>
-<br/>
-
-
-
-
-## Bonus Notes from the End of Time
-
-```rb
-# GET '/books/:id' # I don't get everything, but I see maybe the 10 most recent comments
-# GET '/books/:book_id/comments' => all comments on book
-# POST '/books/:book_id/user_books'
-# GET '/books' allows you to make a request that has url parameters like this:
-# http://localhost:3000/books?author=Malcolm+Gladwell'
-
-# resources :posts do 
-#   resources :comments
-# end
-
-# resources :users do 
-#   resources :user_books, only: [:index]
-# end
-
-#get '/users/:user_id/user_books', to: "user_books#index"
+```
+render json: Post.first
+# will use the
+PostSerializer 
+# by default (if it exists) without 
+# any additional configuration
 ```
 
-Chaining scopes
+If we want to have two different serializers for the same model in different situations (index vs show for example) we can specify which serializer should be used explicitly:
 
-```rb
-class Post
-  def self.search(options)
-    results = self.all
-    allowed_options = ["author", "publication_year"]
-    allowed_options.each do |option|
-      if options['option']
-        results = results.where(option: options['option'])
-      end
-    end
-    results
-  end
+```
+def index
+  render json: Post.all, serializer: 'PostIndexSerializer'
+end
+
+def show
+  render json: Post.find(params[:id])
 end
 ```
+We'll also want to use the serializer generator to make serializers for our model objects.
+
+```
+rails g serializer PostIndex id title author_name
+rails g serializer Post
+```
+
+```rb
+# app/serializers/post_index_serializer.rb
+class PostIndexSerializer < ActiveModel::Serializer
+  attributes :id, :title, :author_name
+end
+```
+
+```rb
+# app/serializers/post_serializer.rb
+class PostSerializer < PostIndexSerializer
+  has_many :comments
+end
+```
+
+This will allow us to include the comments when we retrieve a post from the api using its id, while leaving them out when we retrieve all of the posts from the index endpoint.
+
+## Leave Group/Join Group Button on Groups Index view
+
+<details>
+  <summary>
+    Which endpoint am I hitting to retrieve data for this view?
+  </summary>
+  <hr/>
+
+  GET '/groups', to: groups#index
+
+  <hr/>
+
+</details>
+<br/>
+
+
+
+<details>
+  <summary>
+    1. What data do I need from that particular api endpoint to support the features on this part of my client application?
+  </summary>
+  <hr/>
+
+  - I need the group's id, name and location
+  - I also need an associated user_group belonging to the current user 
+      - if the current user has joined the group, there will be one and I can show a button to leave the group (deleting the user_group)
+      - if there is no user_group belonging to this group and the current user, I can show a join group button instead
+  
+
+  <hr/>
+
+</details>
+<br/>
+
+
+<details>
+  <summary>
+    2. How is that data accessible to me from the API? What attributes, methods, or related objects do I need to serialize so that the client side has the information it needs to display the proper UI?
+  </summary>
+  <hr/>
+
+  - attributes are accessible directly
+  - I need to add a method to the serializer that will look through the current user's user_groups to see if one has the same group_id as this group, the method will return either that or nil..
+
+  <hr/>
+
+</details>
+<br/>
+
+
+## Group Detail Page should show members and events
+
+<details>
+  <summary>
+    Which endpoint am I hitting to retrieve data for this view?
+  </summary>
+  <hr/>
+
+  GET '/groups/:id', to: groups#show
+
+  <hr/>
+
+</details>
+<br/>
+
+<details>
+  <summary>
+    1. What data do I need from a particular api endpoint to support the features on this part of my client application?
+  </summary>
+  <hr/>
+
+  I need to include members and events
+
+  <hr/>
+
+</details>
+<br/>
+
+
+<details>
+  <summary>
+    2. How is that data accessible to me from the API? What attributes, methods, or related objects do I need to serialize so that the client side has the information it needs to display the proper UI?
+  </summary>
+  <hr/>
+
+  - has_many :members
+  - has_many :events
+  >note: I don't need to add through in the serializer even though the group has many members through user_groups
+
+  <hr/>
+
+</details>
+<br/>
+
+
+## RSVP to Event/Cancel RSVP button on Events Index view
+
+<details>
+  <summary>
+    Which endpoint am I hitting to retrieve data for this view?
+  </summary>
+  <hr/>
+
+  GET '/events', to: events#index
+
+  <hr/>
+
+</details>
+<br/>
+
+<details>
+  <summary>
+    1. What data do I need from a particular api endpoint to support the features on this part of my client application?
+  </summary>
+  <hr/>
+
+  - I need the key attributes, :id, :title, :description, :location, :start_time, :end_time
+  - I also may want to convert the start and end times to something a bit more human readable for my client app
+  - if the current user has a user_event belonging to this event, I need to return it to the client:
+    - if it's there, I can show a button to cancel the RSVP (delete the user_event)
+    - if it's not, I can show a button to RSVP to the event
+
+  <hr/>
+
+</details>
+<br/>
+
+
+<details>
+  <summary>
+    2. How is that data accessible to me from the API? What attributes, methods, or related objects do I need to serialize so that the client side has the information it needs to display the proper UI?
+  </summary>
+  <hr/>
+
+  - attributes are directly accessible
+  - we can add a time method that will combine the start and end times into a more human readable format
+```rb
+  def time
+    "From #{object.start_time.strftime('%A, %m/%d/%y at %I:%m %p')} to #{object.end_time.strftime('%A, %m/%d/%y at %I:%m %p')}"
+  end
+```
+  - we can add a `user_event` method that will look through all of the current user's user_events to see if one matches the event we're serializing. If it does, return it, if not return nil.
+
+  <hr/>
+
+</details>
+<br/>
+
+
+## Event Detail View should show attendees, event creator and a link to the group the event belongs to
+
+<details>
+  <summary>
+    Which endpoint am I hitting to retrieve data for this view?
+  </summary>
+  <hr/>
+
+  GET '/events/:id', to: events#show
+
+  <hr/>
+
+</details>
+<br/>
+
+<details>
+  <summary>
+    1. What data do I need from a particular api endpoint to support the features on this part of my client application?
+  </summary>
+  <hr/>
+
+  - I need all the same attributes as for index, :id, :title, :description, :location, :start_time, :end_time
+  - I also want to include the associated group
+  - I want the attendees as well as the username of the creator that the event belongs to
+
+  <hr/>
+
+</details>
+<br/>
+
+
+<details>
+  <summary>
+    2. How is that data accessible to me from the API? What attributes, methods, or related objects do I need to serialize so that the client side has the information it needs to display the proper UI?
+  </summary>
+  <hr/>
+
+  - attributes and formatted time I can get through inheritance with the index serializer
+  - I can add belongs_to :group (with another serializer specified so I only include the id and name of the group needed to construct the link instead of all the groups members and such)
+  - I can add a method called creator that will return the username of the user that this event belongs to
+  - I can add `has_many :attendees` to include the users who have rsvp'd to the event.
+
+  <hr/>
+
+</details>
+<br/>
