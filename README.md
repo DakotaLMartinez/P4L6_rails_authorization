@@ -32,21 +32,21 @@ These are the 4 endpoints we'll need to add to support authentication in our app
 ![Login flow](./diagrams/login.png)
 
 - This endpoint will be used to handle a login form submission from the client application.
-  - If we get an OK response, the user's id is stored in the encrypted session cookie, logging them in and allowing access to the logged in version of the react application with that user's data.
+  - If we get an OK response, the user's id is stored in the encrypted session cookie, logging them in and allowing access to the logged in version of the react application with that user's data. In React, we'll store the user we get back from logging in within the currentUser piece of state.
   - If we don't, we'll be able to tell the user that they presented invalid credentials in the form.
 ## Signing Up with `POST '/signup'`
 
 ![Signup flow](./diagrams/signup.png)
 
 - This endpoint will be used to handle the signup form submission from the client application.
-  - If we get an OK response, the newly registered user'd id will be stored in the encrypted session cookie, logging them in and allowing access to the logged in version of the react application with that user's data.
+  - If we get an OK response, the newly registered user'd id will be stored in the encrypted session cookie, logging them in and allowing access to the logged in version of the react application with that user's data. In React, we'll store the user we get back from signing up within the currentUser piece of state.
   - If we don't, we'll be able to display validation errors to the user and allow them to submit the form again.
 ## Logging Out with `DELETE '/logout'`
 
 ![Logout flow](./diagrams/logout.png)
 
 - This endpoint will be used to handle clicking on the logout button from the client application.
-  - If we get an OK response, the user's id will be removed from the session cookie, logging them out and sending them back to the logged out version of the react application
+  - If we get an OK response, the user's id will be removed from the session cookie, logging them out and sending them back to the logged out version of the react application. In React, we'll set the currentUser to `null` so we get the logged out experience.
   - The only reason we wouldn't get an OK response is if we sent this request and we weren't already logged in. We can add error handling here, but we shouldn't actually need it.
 
 ## React Support for Authentication
