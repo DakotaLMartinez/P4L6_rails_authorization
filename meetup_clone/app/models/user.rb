@@ -4,6 +4,11 @@ class User < ApplicationRecord
   has_many :user_events
   has_many :events, through: :user_events
   has_many :created_events, class_name: 'Event'
+
+  validates :username, uniqueness: true
+  validates :email, uniqueness: true, allow_blank: true
+  
+  has_secure_password
 end
 
 
