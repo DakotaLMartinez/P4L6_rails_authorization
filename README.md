@@ -1,78 +1,81 @@
-# Phase 4 - Lecture 4: Rails Serializers
+# Phase 4 - Lecture 5: Rails Authentication
 
-Today's focus: 
+- We'll be adding auth to the Meetup clone in part 1. The react client has been updated, if you're coding along and want to run it alongside the backend as we update it, pull down the [meetup clone client repo](https://github.com/DakotaLMartinez/080921_meetup_clone_client). 
+- When we get to the exercise, you can pull down the [reading list client repo](https://github.com/DakotaLMartinez/reading_list_client) to test it out. Only change is that the mocked currentUser has been reset to null so we can test out auth for real.
+- Key Authentication Concepts for the day:
+    - Sessions
+    - Cookies
+    - Password Security
 
-- Customizing the JSON rendered by the API to support client side features.
+## Sessions, Cookies and the Hotel Keycard analogy
 
-## Key Features
+- book a reservation -> signup for account
+- check in at front desk -> login to account
+- key card -> cookie
+- card reader -> session
+## Endpoints
+These are the 4 endpoints we'll need to add to support authentication in our applications.
+| Endpoint | Purpose | params |
+|---|---|---|
+| get '/me' | returns the currently logged in user or 401 unauthorized if none exists. Used to determine whether to load the `AuthenticatedApp` or `UnauthenticatedApp` | none |
+| post '/login' | returns the newly logged in user | username and password |
+| post '/signup' | returns the newly created (and logged in) user | username, password, and password_confirmation |
+| delete '/logout' | removes the user_id from the session cookie | none |
+## Checking for authentication with `GET '/me'`
+![checking for authentication](./diagrams/check-authentication.png)
 
-### Meetup Clone
+- We'll be using this endpoint from the frontend to determine when the user is logged in and when they're not
+  - If we get an OK response, we have a logged in user
+  - If we don't, that means we don't have a currently logged in user.
+## Logging in with `POST '/login'`
 
-- When we display the groups list, we can display a Join Group button to users who haven't joined a group and a Leave Group button to users who have joined the group.
-- When we visit the group show page, we can also display a list of the group's members and its events.
-- When we display the events list, we can display an RVSP for Event button to those who haven't already rsvp'd and a Cancel RSVP button to those who have.
-- When we visit the show (detail) page for an event, we also want to have access to the attendees, the creator of the event, and the group that the event belongs to (as a link)
+![Login flow](./diagrams/login.png)
 
-## Necessary configuration for AMS (ActiveModel Serializers)
+- This endpoint will be used to handle a login form submission from the client application.
+  - If we get an OK response, the user's id is stored in the encrypted session cookie, logging them in and allowing access to the logged in version of the react application with that user's data.
+  - If we don't, we'll be able to tell the user that they presented invalid credentials in the form.
+## Signing Up with `POST '/signup'`
 
-```
-bundle add active_model_serializers
-```
-Make sure when you do this that you don't already have a running rails server!
+![Signup flow](./diagrams/signup.png)
 
-Once you've installed this gem, Rails will use a serializer matching the model name to convert an object to JSON by default.
+- This endpoint will be used to handle the signup form submission from the client application.
+  - If we get an OK response, the newly registered user'd id will be stored in the encrypted session cookie, logging them in and allowing access to the logged in version of the react application with that user's data.
+  - If we don't, we'll be able to display validation errors to the user and allow them to submit the form again.
+## Logging Out with `DELETE '/logout'`
 
-```
-render json: Post.first
-# will use the
-PostSerializer 
-# by default (if it exists) without 
-# any additional configuration
-```
+![Logout flow](./diagrams/logout.png)
 
-If we want to have two different serializers for the same model in different situations (index vs show for example) we can specify which serializer should be used explicitly:
+- This endpoint will be used to handle clicking on the logout button from the client application.
+  - If we get an OK response, the user's id will be removed from the session cookie, logging them out and sending them back to the logged out version of the react application
+  - The only reason we wouldn't get an OK response is if we sent this request and we weren't already logged in. We can add error handling here, but we shouldn't actually need it.
 
-```
-def index
-  render json: Post.all, serializer: 'PostIndexSerializer'
-end
+## React Support for Authentication
 
-def show
-  render json: Post.find(params[:id])
-end
-```
-We'll also want to use the serializer generator to make serializers for our model objects.
+![React authentication flow](./diagrams/react-app-flow.png)
 
-```
-rails g serializer PostIndex id title author_name
-rails g serializer Post
-```
+- The basic strategy here is to have two different top level components.
+  - One for logged in users 
+  - and one for non-logged in users.
+- We'll render nothing until we've checked for a logged in user.
+- Then we'll check to see that someone is logged in 
+  - If we have a logged in user (based on the contents of our session cookies) we'll show the logged-in version of the app
+  - If we don't, we'll show a non-logged in version of the app (in our case we'll just have routes for signing up and logging in, but you could also have a landing page route, for example)
 
-```rb
-# app/serializers/post_index_serializer.rb
-class PostIndexSerializer < ActiveModel::Serializer
-  attributes :id, :title, :author_name
-end
-```
+# Plan of Attack
 
-```rb
-# app/serializers/post_serializer.rb
-class PostSerializer < PostIndexSerializer
-  has_many :comments
-end
-```
-
-This will allow us to include the comments when we retrieve a post from the api using its id, while leaving them out when we retrieve all of the posts from the index endpoint.
-
-## Leave Group/Join Group Button on Groups Index view
-
+Because Authentication in a web application involves a set of related features, rather than an individual feature of the application, we'll be splitting our tasks into layers but in a different way than we have so far. Instead of starting with the requests and then building out the routes, controller actions, database and model changes and finally the responses, we'll start by building out the backend foundational changes(dependency, configuration, model & database) that required to support authentication. Then, we'll fill in the routes and controller actions needed to handle the 4 requests mentioned above.
+## Dependencies (Gems/packages)
 <details>
   <summary>
-    Which endpoint am I hitting to retrieve data for this view?
+    What dependencies do we need to add to support authentication?
   </summary>
   <hr/>
 
-  GET '/groups', to: groups#index
+  We need bcrypt so that we can store encrypted (salted and hashed) versions of our users passwords instead of storing passwords in plain text:
+
+  ```bash
+  bundle add bcrypt
+  ```
 
   <hr/>
 
@@ -80,132 +83,30 @@ This will allow us to include the comments when we retrieve a post from the api 
 <br/>
 
 
-
+## Configuration (environment variables/other stuff in config folder)
 <details>
   <summary>
-    1. What data do I need from that particular api endpoint to support the features on this part of my client application?
+    What configuration do we need to add to support authentication?
   </summary>
   <hr/>
 
-  - I need the group's id, name and location
-  - I also need an associated user_group belonging to the current user 
-      - if the current user has joined the group, there will be one and I can show a button to leave the group (deleting the user_group)
-      - if there is no user_group belonging to this group and the current user, I can show a join group button instead
-  
+  We need to tell rails that we want session cookies. To do that, we'll add the following to the config block in `config/application.rb`
+  ```rb
+  config.middleware.use ActionDispatch::Cookies
+  config.middleware.use ActionDispatch::Session::CookieStore
 
-  <hr/>
+  # Use SameSite=Strict for all cookies to help protect against CSRF
+  config.action_dispatch.cookies_same_site_protection = :strict
+  ```
+  We'll also need to include the middleware within the `ApplicationController`
 
-</details>
-<br/>
-
-
-<details>
-  <summary>
-    2. How is that data accessible to me from the API? What attributes, methods, or related objects do I need to serialize so that the client side has the information it needs to display the proper UI?
-  </summary>
-  <hr/>
-
-  - attributes are accessible directly
-  - I need to add a method to the serializer that will look through the current user's user_groups to see if one has the same group_id as this group, the method will return either that or nil..
-
-  <hr/>
-
-</details>
-<br/>
-
-
-## Group Detail Page should show members and events
-
-<details>
-  <summary>
-    Which endpoint am I hitting to retrieve data for this view?
-  </summary>
-  <hr/>
-
-  GET '/groups/:id', to: groups#show
-
-  <hr/>
-
-</details>
-<br/>
-
-<details>
-  <summary>
-    1. What data do I need from a particular api endpoint to support the features on this part of my client application?
-  </summary>
-  <hr/>
-
-  I need to include members and events
-
-  <hr/>
-
-</details>
-<br/>
-
-
-<details>
-  <summary>
-    2. How is that data accessible to me from the API? What attributes, methods, or related objects do I need to serialize so that the client side has the information it needs to display the proper UI?
-  </summary>
-  <hr/>
-
-  - has_many :members
-  - has_many :events
-  >note: I don't need to add through in the serializer even though the group has many members through user_groups
-
-  <hr/>
-
-</details>
-<br/>
-
-
-## RSVP to Event/Cancel RSVP button on Events Index view
-
-<details>
-  <summary>
-    Which endpoint am I hitting to retrieve data for this view?
-  </summary>
-  <hr/>
-
-  GET '/events', to: events#index
-
-  <hr/>
-
-</details>
-<br/>
-
-<details>
-  <summary>
-    1. What data do I need from a particular api endpoint to support the features on this part of my client application?
-  </summary>
-  <hr/>
-
-  - I need the key attributes, :id, :title, :description, :location, :start_time, :end_time
-  - I also may want to convert the start and end times to something a bit more human readable for my client app
-  - if the current user has a user_event belonging to this event, I need to return it to the client:
-    - if it's there, I can show a button to cancel the RSVP (delete the user_event)
-    - if it's not, I can show a button to RSVP to the event
-
-  <hr/>
-
-</details>
-<br/>
-
-
-<details>
-  <summary>
-    2. How is that data accessible to me from the API? What attributes, methods, or related objects do I need to serialize so that the client side has the information it needs to display the proper UI?
-  </summary>
-  <hr/>
-
-  - attributes are directly accessible
-  - we can add a time method that will combine the start and end times into a more human readable format
-```rb
-  def time
-    "From #{object.start_time.strftime('%A, %m/%d/%y at %I:%m %p')} to #{object.end_time.strftime('%A, %m/%d/%y at %I:%m %p')}"
+  ```rb
+  class ApplicationController < ActionController::API
+    include ActionController::Cookies
+    # ...
   end
-```
-  - we can add a `user_event` method that will look through all of the current user's user_events to see if one matches the event we're serializing. If it does, return it, if not return nil.
+
+  ```
 
   <hr/>
 
@@ -213,51 +114,105 @@ This will allow us to include the comments when we retrieve a post from the api 
 <br/>
 
 
-## Event Detail View should show attendees, event creator and a link to the group the event belongs to
+
+## Database
 
 <details>
   <summary>
-    Which endpoint am I hitting to retrieve data for this view?
+    What database changes do we need to make to support authentication?
   </summary>
   <hr/>
 
-  GET '/events/:id', to: events#show
+  We need a `password_digest` column in our `users` table to store our users' encrypted passwords.
+
+  ```bash
+  rails g migration AddPasswordDigestToUsers password_digest
+  ```
+
+  ```bash
+  rails db:migrate
+  ```
 
   <hr/>
 
 </details>
 <br/>
+
+
+
+## Models
+<details>
+  <summary>
+    What changes in the model layer do we need to add to support authentication?
+  </summary>
+  <hr/>
+
+  - We need to add a uniqueness validation for username (and email) So we can consistently find the right user for authentication
+  - We need to add the `has_secure_password` macro to the model to implement the `authenticate` and `password=` methods used in login & signup actions respectively
+
+  <hr/>
+
+</details>
+<br/>
+
+## Views/Serializers
+<details>
+  <summary>
+    What do we need to change in our serializers to support authentication?
+  </summary>
+  <hr/>
+
+  - We'll want a `UserSerializer` that returns only the `id`, `username`, and `email`
+
+  <hr/>
+
+</details>
+<br/>
+
+
+## Routes
 
 <details>
   <summary>
-    1. What data do I need from a particular api endpoint to support the features on this part of my client application?
+    What routes do we need to add to support authentication?
   </summary>
   <hr/>
 
-  - I need all the same attributes as for index, :id, :title, :description, :location, :start_time, :end_time
-  - I also want to include the associated group
-  - I want the attendees as well as the username of the creator that the event belongs to
+  ```rb
+  get "/me", to: "users#show"
+  post "/signup", to: "users#create"
+  post "/login", to: "sessions#create"
+  delete "/logout", to: "sessions#destroy"
+  ```
 
   <hr/>
 
 </details>
 <br/>
 
+
+
+## Controllers
 
 <details>
   <summary>
-    2. How is that data accessible to me from the API? What attributes, methods, or related objects do I need to serialize so that the client side has the information it needs to display the proper UI?
+    What changes or additions do we need to affect in our controllers to support authentication?
   </summary>
   <hr/>
 
-  - attributes and formatted time I can get through inheritance with the index serializer
-  - I can add belongs_to :group (with another serializer specified so I only include the id and name of the group needed to construct the link instead of all the groups members and such)
-  - I can add a method called creator that will return the username of the user that this event belongs to
-  - I can add `has_many :attendees` to include the users who have rsvp'd to the event.
+  We'll need actions for:
+  - `users#show` - for rendering the currently logged in user as json
+  - `users#create` - for handling the signup form submission and rendering the newly created user as json (while logging them in)
+  - `sessions#create` - for handling the login form submission and rendering the newly logged in user as json
+  - `sessions#destroy` - for handling logout and removing the user_id from the session cookie
+
+  We'll also need to change the `current_user` method so that it makes use of the user_id stored in the session cookie sent from the browser. This will allow us to login as different users and have our application recognize user's requests by reading the user_id out of the cookie and returning the associated user.
+
 
   <hr/>
 
 </details>
 <br/>
 
-After we're done with this, we can test out the [react client](https://github.com/DakotaLMartinez/080921_meetup_clone_client) and see if it works!
+
+
